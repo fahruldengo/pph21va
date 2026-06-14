@@ -122,6 +122,7 @@ const Demo = {
       case 'listPajak': return d.pajak.filter(r=>(!p.tahun||String(r.tahun)===String(p.tahun))&&(!p.bulan||r.bulan===p.bulan));
       case 'savePajak': {
         const c=Calc.compute(p);
+        if(c.grossUp) p.tunjangan_pph=c.tunjPph;
         Object.assign(p,{bruto:c.bruto,kategori_ter:c.kat,tarif_ter:c.tarif,pph_terutang:c.pph});
         if(!p.id) p.id='TX-'+Date.now();
         const i=d.pajak.findIndex(x=>x.id===p.id);
@@ -144,12 +145,15 @@ const Demo = {
     });
     const employees=Object.keys(byEmp).map(k=>{
       const e=byEmp[k]; const m=emp[k]||{nama:'(?)',ptkp:'TK/0'};
+      const bln=Object.keys(e.bulan).length;
       const bj=Math.min(e.bruto*0.05,6000000);
       const neto=e.bruto-bj-e.iuran-e.zakat;
       const ptkp=PTKP[m.ptkp]?PTKP[m.ptkp].setahun:54000000;
       const pkp=Math.max(0,Math.floor((neto-ptkp)/1000)*1000);
       const setahun=pasal17(pkp);
-      return {pegawai_id:k,nama:m.nama,ptkp:m.ptkp,total_bruto:e.bruto,total_pph_dipotong:e.pph,pph_setahun:setahun,neto:Math.round(neto),pkp,kurang_lebih:setahun-e.pph};
+      return {pegawai_id:k,nama:m.nama,ptkp:m.ptkp,total_bruto:e.bruto,total_pph_dipotong:e.pph,
+        pph_setahun:setahun,neto:Math.round(neto),pkp,kurang_lebih:setahun-e.pph,
+        bulan:bln, berhenti:String(m.aktif||'').toLowerCase()==='berhenti', bulan_berhenti:m.bulan_berhenti||''};
     });
     const grand=employees.reduce((a,r)=>({bruto:a.bruto+r.total_bruto,pph:a.pph+r.total_pph_dipotong,setahun:a.setahun+r.pph_setahun}),{bruto:0,pph:0,setahun:0});
     return {tahun,employees,grand};
@@ -236,12 +240,16 @@ function fillYears(){
    ============================================================ */
 const Calc = {
   fillEmpSelect(){
+    const active = App.pegawai.filter(e=>String(e.aktif||'Aktif').toLowerCase()!=='berhenti');
     $('#c_pegawai').innerHTML='<option value="">— input manual —</option>'+
-      App.pegawai.map(e=>`<option value="${e.id}">${e.nama}</option>`).join('');
+      active.map(e=>`<option value="${e.id}">${esc(e.nama)}</option>`).join('');
   },
   loadEmp(){
     const id=$('#c_pegawai').value; const e=App.pegawai.find(x=>x.id===id);
-    if(e){ $('#c_ptkp').value=e.ptkp||'TK/0'; }
+    if(e){
+      $('#c_ptkp').value=e.ptkp||'TK/0';
+      $('#c_grossup').value=(String(e.metode_gross_up).toLowerCase()==='yes')?'Yes':'No';
+    }
     this.run();
   },
   autoPremi(){
@@ -254,7 +262,7 @@ const Calc = {
   read(){
     return {
       ptkp:$('#c_ptkp').value, bulan:$('#c_bulan').value, tahun:$('#c_tahun').value,
-      pegawai_id:$('#c_pegawai').value,
+      pegawai_id:$('#c_pegawai').value, metode_gross_up:$('#c_grossup').value,
       gaji:N($('#c_gaji').value), tunjangan_pph:N($('#c_tunjpph').value),
       tunjangan_lainnya:N($('#c_tunjlain').value), honorarium:N($('#c_honor').value),
       bonus_thr:N($('#c_bonus').value), natura:N($('#c_natura').value),
@@ -263,14 +271,36 @@ const Calc = {
     };
   },
   compute(p){
-    const bruto = N(p.gaji)+N(p.tunjangan_pph)+N(p.tunjangan_lainnya)+N(p.honorarium)
-                + N(p.bonus_thr)+N(p.natura)+N(p.premi_jkk)+N(p.premi_jkm)+N(p.premi_kes);
     const kat = PTKP_TO_TER[p.ptkp]||'A';
-    const tarif = terRate(kat,bruto);
-    return { bruto:Math.round(bruto), kat, tarif, pph:Math.round(bruto*tarif) };
+    const grossUp = String(p.metode_gross_up).toLowerCase()==='yes';
+    const base = N(p.gaji)+N(p.tunjangan_lainnya)+N(p.honorarium)
+               + N(p.bonus_thr)+N(p.natura)+N(p.premi_jkk)+N(p.premi_jkm)+N(p.premi_kes);
+    let tunjPph = grossUp ? 0 : N(p.tunjangan_pph);
+    let bruto, tarif, pph;
+    if (grossUp){
+      for (let i=0;i<60;i++){
+        bruto = base+tunjPph; tarif = terRate(kat,bruto); pph = Math.round(bruto*tarif);
+        if (Math.abs(pph-tunjPph)<1) break;
+        tunjPph = pph;
+      }
+      bruto = base+tunjPph; tarif = terRate(kat,bruto); pph = Math.round(bruto*tarif);
+    } else {
+      bruto = base+tunjPph; tarif = terRate(kat,bruto); pph = Math.round(bruto*tarif);
+    }
+    return { bruto:Math.round(bruto), kat, tarif, pph, tunjPph:Math.round(tunjPph), grossUp };
   },
   run(){
     const p=this.read(); const c=this.compute(p);
+    // Gross up: tunjangan PPh = PPh terutang; isi otomatis & kunci field-nya
+    const tunjField=$('#c_tunjpph'), hint=$('#c_tunjpph_hint');
+    if (c.grossUp){
+      tunjField.value=c.tunjPph; tunjField.readOnly=true;
+      tunjField.style.background='var(--accent-soft)'; tunjField.style.color='var(--accent)';
+      hint.style.display='inline';
+    } else {
+      tunjField.readOnly=false; tunjField.style.background=''; tunjField.style.color='';
+      hint.style.display='none';
+    }
     $('#r_bruto').textContent=fmt(c.bruto);
     $('#r_kat').textContent='TER '+c.kat; $('#r_kat').className='tag '+c.kat.toLowerCase();
     $('#r_tarif').textContent=pct(c.tarif);
@@ -302,19 +332,28 @@ const Emp = {
     const rows=App.pegawai.filter(e=>!q||[e.nama,e.nik,e.jabatan].join(' ').toLowerCase().includes(q));
     const body=$('#empBody');
     if(!rows.length){ body.innerHTML=`<tr><td colspan="7"><div class="empty"><h3>Belum ada pegawai</h3><p>Tambahkan pegawai untuk mulai menghitung PPh 21.</p></div></td></tr>`; return; }
-    body.innerHTML=rows.map(e=>`<tr>
-      <td><b>${esc(e.nama)}</b><div style="font-size:12px;color:var(--ink-soft)">${esc(e.jenis_kelamin||'')}</div></td>
+    body.innerHTML=rows.map(e=>{
+      const berhenti = String(e.aktif||'Aktif').toLowerCase()==='berhenti';
+      const statusCell = berhenti
+        ? `<span class="tag muted">Berhenti${e.bulan_berhenti?' · '+MONTH_LABEL[e.bulan_berhenti]:''}</span>`
+        : '<span class="tag a">Aktif</span>';
+      return `<tr style="${berhenti?'opacity:.62':''}">
+      <td><b>${esc(e.nama)}</b><div style="font-size:12px;color:var(--ink-soft)">${esc(e.jenis_kelamin||'')}${String(e.metode_gross_up).toLowerCase()==='yes'?' · Gross Up':''}</div></td>
       <td>${esc(e.jabatan||'-')}</td>
       <td class="mono" style="font-size:12px">${esc(e.nik||'-')}</td>
       <td><span class="tag muted">${esc(e.ptkp||'-')}</span></td>
       <td class="mono" style="font-size:12px">${e.punya_npwp==='YA'?esc(e.npwp||'-'):'<span style="color:var(--warn)">Tanpa NPWP</span>'}</td>
-      <td>${e.aktif==='Tidak'?'<span class="tag muted">Nonaktif</span>':'<span class="tag a">Aktif</span>'}</td>
+      <td>${statusCell}</td>
       <td><div class="rowact">
         <button class="btn sm ghost" onclick="Emp.openModal('${e.id}')">Ubah</button>
         <button class="btn sm ghost danger" onclick="Emp.del('${e.id}','${esc(e.nama)}')">Hapus</button>
-      </div></td></tr>`).join('');
+      </div></td></tr>`;
+    }).join('');
   },
   openModal(id){
+    // populate berhenti-month select once
+    if(!$('#e_berhenti').options.length)
+      $('#e_berhenti').innerHTML=MONTHS.map(m=>`<option value="${m}">${MONTH_LABEL[m]}</option>`).join('');
     const e = id ? App.pegawai.find(x=>x.id===id) : {};
     $('#empModalTitle').textContent = id?'Ubah pegawai':'Tambah pegawai';
     $('#e_id').value=e.id||''; $('#e_nama').value=e.nama||''; $('#e_jabatan').value=e.jabatan||'';
@@ -322,16 +361,24 @@ const Emp = {
     $('#e_nik').value=e.nik||''; $('#e_idtku').value=e.id_tku||'';
     $('#e_punyanpwp').value=e.punya_npwp||'YA'; $('#e_npwp').value=e.npwp||'';
     $('#e_kop').value=e.kode_objek_pajak||'21-100-01'; $('#e_gu').value=e.metode_gross_up||'No';
+    $('#e_aktif').value=(String(e.aktif||'Aktif').toLowerCase()==='berhenti')?'Berhenti':'Aktif';
+    $('#e_berhenti').value=e.bulan_berhenti||'DES';
     $('#e_alamat').value=e.alamat||'';
+    this.toggleBerhenti();
     $('#empModal').classList.add('open');
+  },
+  toggleBerhenti(){
+    $('#e_berhenti_wrap').style.display = $('#e_aktif').value==='Berhenti' ? 'flex' : 'none';
   },
   closeModal(){ $('#empModal').classList.remove('open'); },
   async save(){
+    const berhenti = $('#e_aktif').value==='Berhenti';
     const p={
       id:$('#e_id').value||undefined, nama:$('#e_nama').value.trim(), jabatan:$('#e_jabatan').value.trim(),
       jenis_kelamin:$('#e_jk').value, ptkp:$('#e_ptkp').value, nik:$('#e_nik').value.trim(),
       id_tku:$('#e_idtku').value.trim(), punya_npwp:$('#e_punyanpwp').value, npwp:$('#e_npwp').value.trim(),
-      kode_objek_pajak:$('#e_kop').value.trim(), metode_gross_up:$('#e_gu').value, alamat:$('#e_alamat').value.trim(), aktif:'Aktif'
+      kode_objek_pajak:$('#e_kop').value.trim(), metode_gross_up:$('#e_gu').value, alamat:$('#e_alamat').value.trim(),
+      aktif: berhenti?'Berhenti':'Aktif', bulan_berhenti: berhenti?$('#e_berhenti').value:''
     };
     if(!p.nama){ toast('Nama wajib diisi',true); return; }
     try{ await API.call('savePegawai',p); this.closeModal(); await this.load(); toast('Pegawai tersimpan'); }
@@ -399,8 +446,12 @@ const Annual = {
     if(!s.employees.length){ body.innerHTML=`<tr><td colspan="7"><div class="empty"><h3>Belum ada data tahun ini</h3></div></td></tr>`; return; }
     body.innerHTML=s.employees.map(r=>{
       const sel=r.kurang_lebih; const cls=sel>0?'var(--warn)':sel<0?'var(--accent)':'var(--ink-soft)';
-      return `<tr>
-        <td><b>${esc(r.nama)}</b></td>
+      const partial = r.bulan<12;
+      const sub = r.berhenti
+        ? `Berhenti${r.bulan_berhenti?' · '+MONTH_LABEL[r.bulan_berhenti]:''} · ${r.bulan} bln`
+        : partial ? `${r.bulan} bln (belum genap)` : '12 bln';
+      return `<tr style="${r.berhenti?'opacity:.72':''}">
+        <td><b>${esc(r.nama)}</b><div style="font-size:12px;color:var(--ink-soft)">${sub}</div></td>
         <td><span class="tag muted">${esc(r.ptkp)}</span></td>
         <td class="num">${fmt(r.total_bruto)}</td>
         <td class="num">${fmt(r.pkp)}</td>
