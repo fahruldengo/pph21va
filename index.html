@@ -230,12 +230,19 @@ td.num,th.num{text-align:right;font-family:'JetBrains Mono',monospace;font-varia
             <div class="field"><label>Masa pajak</label><select id="c_bulan"></select></div>
             <div class="field"><label>Tahun</label><input id="c_tahun" type="number" value="2026"></div>
           </div>
+          <div class="frow one">
+            <div class="field"><label>Metode penggajian</label>
+              <select id="c_grossup" onchange="Calc.run()">
+                <option value="No">Non Gross Up (pegawai menanggung PPh)</option>
+                <option value="Yes">Gross Up (perusahaan menanggung PPh)</option>
+              </select></div>
+          </div>
         </div>
         <div class="calc-section">
           <h3><span class="n">B</span> Penghasilan teratur</h3>
           <div class="frow">
             <div class="field"><label>Gaji pokok</label><input class="ci" id="c_gaji" type="number" value="0"></div>
-            <div class="field"><label>Tunjangan PPh</label><input class="ci" id="c_tunjpph" type="number" value="0"></div>
+            <div class="field"><label>Tunjangan PPh <span id="c_tunjpph_hint" style="color:var(--accent);font-weight:600;display:none">· otomatis (gross up)</span></label><input class="ci" id="c_tunjpph" type="number" value="0"></div>
           </div>
           <div class="frow">
             <div class="field"><label>Tunjangan lain / lembur</label><input class="ci" id="c_tunjlain" type="number" value="0"></div>
@@ -401,6 +408,15 @@ td.num,th.num{text-align:right;font-family:'JetBrains Mono',monospace;font-varia
       <div class="frow">
         <div class="field"><label>Kode objek pajak</label><input id="e_kop" value="21-100-01"></div>
         <div class="field"><label>Metode gross up</label><select id="e_gu"><option>No</option><option>Yes</option></select></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Status kepegawaian</label>
+          <select id="e_aktif" onchange="Emp.toggleBerhenti()">
+            <option value="Aktif">Aktif</option>
+            <option value="Berhenti">Berhenti (tidak muncul di input bulanan)</option>
+          </select></div>
+        <div class="field" id="e_berhenti_wrap" style="display:none"><label>Masa terakhir bekerja</label>
+          <select id="e_berhenti"></select></div>
       </div>
       <div class="frow one"><div class="field"><label>Alamat</label><input id="e_alamat"></div></div>
     </div>
