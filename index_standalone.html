@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aplikasi PPh Pasal 21 — TER (PP 58/2023)</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280;
+    --line:#e5e7eb; --brand:#2563eb; --brand-d:#1d4ed8; --green:#059669;
+    --red:#dc2626; --amber:#d97706; --shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  header{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:18px 24px;box-shadow:var(--shadow)}
+  header h1{margin:0;font-size:18px;font-weight:600}
+  header p{margin:2px 0 0;font-size:12px;opacity:.85}
+  .status{float:right;font-size:12px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.15)}
+  .status.ok{background:rgba(16,185,129,.3)}
+  .status.err{background:rgba(220,38,38,.4)}
+  nav{display:flex;gap:4px;background:#fff;padding:0 24px;border-bottom:1px solid var(--line);overflow-x:auto}
+  nav button{border:none;background:none;padding:14px 18px;cursor:pointer;font-size:14px;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+  nav button.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+  main{padding:24px;max-width:1180px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
+  .card h2{margin:0 0 16px;font-size:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:500}
+  input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  input[readonly]{background:#f9fafb;color:var(--muted)}
+  .btn{padding:9px 16px;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:500}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-d)}
+  .btn-ghost{background:#f3f4f6;color:var(--ink)}
+  .btn-danger{background:#fee2e2;color:var(--red)}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .right{margin-left:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:#f9fafb;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:hover td{background:#f9fafb}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+  .pill-a{background:#dbeafe;color:#1e40af}
+  .pill-b{background:#fef3c7;color:#92400e}
+  .pill-c{background:#dcfce7;color:#166534}
+  .pill-p{background:#f3e8ff;color:#6b21a8}
+  .muted{color:var(--muted);font-size:12px}
+  .result-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;margin-top:16px}
+  .result-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #cbd5e1}
+  .result-row:last-child{border:none}
+  .result-row.total{font-weight:700;font-size:16px;color:var(--brand);border-top:2px solid var(--brand);margin-top:6px;padding-top:10px}
+  .toast{position:fixed;bottom:24px;right:24px;background:#1f2937;color:#fff;padding:12px 18px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transform:translateY(10px);transition:.3s;z-index:100}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.err{background:var(--red)}
+  .empty{text-align:center;color:var(--muted);padding:30px}
+  .section-title{font-size:12px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 8px}
+  @media print{nav,header .status,.no-print{display:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <span class="status" id="connStatus">Menghubungkan…</span>
+  <h1>Aplikasi PPh Pasal 21 (TER — PP 58/2023)</h1>
+  <p>Kalkulator · Data Karyawan · Rekap Bulanan · Summary Tahunan · Bukti Potong</p>
+</header>
+
+<nav>
+  <button class="active" data-tab="calc">Kalkulator</button>
+  <button data-tab="emp">Data Karyawan</button>
+  <button data-tab="rec">Rekap Bulanan</button>
+  <button data-tab="sum">Summary Tahunan</button>
+  <button data-tab="bp">Bukti Potong</button>
+</nav>
+
+<main>
+  <!-- ===== KALKULATOR ===== -->
+  <section id="tab-calc">
+    <div class="card">
+      <h2>Kalkulator PPh Pasal 21</h2>
+      <div class="grid">
+        <div><label>Karyawan</label><select id="c_emp"><option value="">— Manual / pilih karyawan —</option></select></div>
+        <div><label>Nama</label><input id="c_nama"></div>
+        <div><label>Status PTKP</label><select id="c_ptkp"></select></div>
+        <div><label>Punya NPWP</label><select id="c_npwp"><option>YA</option><option>TIDAK</option></select></div>
+        <div><label>Tahun</label><input id="c_tahun" type="number" value="2026"></div>
+        <div><label>Bulan</label><select id="c_bulan"></select></div>
+      </div>
+
+      <div class="section-title">A. Penghasilan Teratur</div>
+      <div class="grid">
+        <div><label>Gaji Pokok</label><input id="c_gajiPokok" type="number" value="0"></div>
+        <div><label>Tunjangan</label><input id="c_tunjangan" type="number" value="0"></div>
+        <div><label>Uang Makan</label><input id="c_uangMakan" type="number" value="0"></div>
+        <div><label>Uang Lembur</label><input id="c_uangLembur" type="number" value="0"></div>
+        <div><label>Penghasilan Lainnya</label><input id="c_penghasilanLain" type="number" value="0"></div>
+        <div><label>Tunjangan PPh</label><input id="c_tunjanganPph" type="number" value="0"></div>
+        <div><label>Premi JKK</label><input id="c_premiJkk" type="number" value="0"></div>
+        <div><label>Premi JKM</label><input id="c_premiJkm" type="number" value="0"></div>
+        <div><label>Premi BPJS Kesehatan</label><input id="c_premiKes" type="number" value="0"></div>
+        <div><label>Natura Objek PPh 21</label><input id="c_natura" type="number" value="0"></div>
+      </div>
+
+      <div class="section-title">B. Penghasilan Tidak Teratur</div>
+      <div class="grid">
+        <div><label>Bonus</label><input id="c_bonus" type="number" value="0"></div>
+        <div><label>THR</label><input id="c_thr" type="number" value="0"></div>
+        <div><label>Tantiem / Jasa Produksi</label><input id="c_tantiem" type="number" value="0"></div>
+      </div>
+
+      <div class="section-title">Pengurang (untuk Desember/Tahunan)</div>
+      <div class="grid">
+        <div><label>Iuran Zakat</label><input id="c_iuranZakat" type="number" value="0"></div>
+        <div><label>Iuran Pensiun (JP)</label><input id="c_iuranPensiun" type="number" value="0"></div>
+        <div><label>Iuran JHT</label><input id="c_iuranJht" type="number" value="0"></div>
+      </div>
+
+      <div id="c_decExtra" style="display:none">
+        <div class="section-title">Khusus Desember — Akumulasi Setahun</div>
+        <div class="grid">
+          <div><label>Total Bruto Jan–Des (setahun)</label><input id="c_brutoSetahun" type="number" value="0"></div>
+          <div><label>Total Pengurang Setahun</label><input id="c_pengurangSetahun" type="number" value="0"></div>
+          <div><label>PPh sudah dipotong Jan–Nov</label><input id="c_pphDipotong" type="number" value="0"></div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:18px">
+        <button class="btn btn-primary" onclick="App.hitung()">Hitung PPh 21</button>
+        <button class="btn btn-ghost" onclick="App.resetCalc()">Reset</button>
+        <button class="btn btn-primary right" id="c_save" onclick="App.simpanRecord()" style="display:none">Simpan ke Spreadsheet</button>
+      </div>
+
+      <div class="result-box" id="c_result" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- ===== KARYAWAN ===== -->
+  <section id="tab-emp" style="display:none">
+    <div class="card">
+      <h2>Tambah / Edit Karyawan</h2>
+      <input type="hidden" id="e_id">
+      <div class="grid">
+        <div><label>Nama</label><input id="e_nama"></div>
+        <div><label>NIK</label><input id="e_nik"></div>
+        <div><label>NPWP</label><input id="e_npwp"></div>
+        <div><label>Punya NPWP</label><select id="e_punyaNpwp"><option>YA</option><option>TIDAK</option></select></div>
+        <div><label>Status PTKP</label><select id="e_statusPtkp"></select></div>
+        <div><label>Jenis Kelamin</label><select id="e_jenisKelamin"><option>Laki-laki</option><option>Perempuan</option></select></div>
+        <div><label>Jabatan</label><input id="e_jabatan"></div>
+        <div><label>Status</label><select id="e_aktif"><option value="AKTIF">AKTIF</option><option value="NONAKTIF">NONAKTIF</option></select></div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn btn-primary" onclick="App.simpanKaryawan()">Simpan</button>
+        <button class="btn btn-ghost" onclick="App.resetEmp()">Bersihkan</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Daftar Karyawan</h2>
+      <div id="empList"></div>
+    </div>
+  </section>
+
+  <!-- ===== REKAP BULANAN ===== -->
+  <section id="tab-rec" style="display:none">
+    <div class="card">
+      <h2>Rekap Perhitungan Bulanan</h2>
+      <div class="row" style="margin-bottom:14px">
+        <div><label>Bulan</label><select id="r_bulan"></select></div>
+        <div><label>Tahun</label><input id="r_tahun" type="number" value="2026" style="width:110px"></div>
+        <button class="btn btn-primary" style="align-self:flex-end" onclick="App.loadRecords()">Tampilkan</button>
+        <button class="btn btn-ghost right no-print" style="align-self:flex-end" onclick="window.print()">Cetak</button>
+      </div>
+      <div id="recList"></div>
+    </div>
+  </section>
+
+  <!-- ===== SUMMARY TAHUNAN ===== -->
+  <section id="tab-sum" style="display:none">
+    <div class="card">
+      <h2>Summary Pemotongan Pajak Setahun</h2>
+      <div class="row" style="margin-bottom:14px">
+        <div><label>Tahun</label><input id="s_tahun" type="number" value="2026" style="width:110px"></div>
+        <button class="btn btn-primary" style="align-self:flex-end" onclick="App.loadSummary()">Tampilkan</button>
+        <button class="btn btn-ghost right no-print" style="align-self:flex-end" onclick="window.print()">Cetak</button>
+      </div>
+      <div id="sumList"></div>
+    </div>
+  </section>
+
+  <!-- ===== BUKTI POTONG ===== -->
+  <section id="tab-bp" style="display:none">
+    <div class="card no-print">
+      <h2>Cetak Bukti Potong</h2>
+      <div class="row">
+        <div><label>Bulan</label><select id="bp_bulan"></select></div>
+        <div><label>Tahun</label><input id="bp_tahun" type="number" value="2026" style="width:110px"></div>
+        <div style="flex:1"><label>Karyawan</label><select id="bp_emp"></select></div>
+        <button class="btn btn-primary" style="align-self:flex-end" onclick="App.loadBuktiPotong()">Tampilkan</button>
+        <button class="btn btn-ghost" style="align-self:flex-end" onclick="window.print()">Cetak / PDF</button>
+      </div>
+    </div>
+    <div id="bpArea"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<script>
+/* ===== config ===== */
+// ====== KONFIGURASI ======
+// Ganti dengan URL Web App Apps Script kamu (yang berakhiran /exec)
+window.PPH_CONFIG = {
+  API_URL: 'PASTE_URL_WEB_APP_KAMU_DISINI/exec'
+};
+
+/* ===== calc ===== */
+// ====== MESIN PERHITUNGAN PPh 21 (PP 58/2023 - TER) ======
+
+// Tabel PTKP setahun
+const PTKP = {
+  'TK/0':54000000,'TK/1':58500000,'TK/2':63000000,'TK/3':67500000,
+  'K/0':58500000,'K/1':63000000,'K/2':67500000,'K/3':72000000,
+  'K/I/0':112500000,'K/I/1':117000000,'K/I/2':121500000,'K/I/3':126000000
+};
+
+// Mapping status PTKP -> kategori TER
+const TER_MAP = {
+  'TK/0':'TER A','TK/1':'TER A','K/0':'TER A',
+  'TK/2':'TER B','TK/3':'TER B','K/1':'TER B','K/2':'TER B',
+  'K/3':'TER C','K/I/0':'TER C','K/I/1':'TER C','K/I/2':'TER C','K/I/3':'TER C'
+};
+
+// Tabel TER: { kategori: [[batasAtasBruto, tarif], ...] }
+const TER_TABLE = {
+  'TER A': [[5400000,0],[5650000,0.0025],[5950000,0.005],[6300000,0.0075],[6750000,0.01],[7500000,0.0125],[8550000,0.015],[9650000,0.0175],[10050000,0.02],[10350000,0.0225],[10700000,0.025],[11050000,0.03],[11600000,0.035],[12500000,0.04],[13750000,0.05],[15100000,0.06],[16950000,0.07],[19750000,0.08],[24150000,0.09],[26450000,0.1],[28000000,0.11],[30050000,0.12],[32400000,0.13],[35400000,0.14],[39100000,0.15],[43850000,0.16],[47800000,0.17],[51400000,0.18],[56300000,0.19],[62200000,0.2],[68600000,0.21],[77500000,0.22],[89000000,0.23],[103000000,0.24],[125000000,0.25],[157000000,0.26],[206000000,0.27],[337000000,0.28],[454000000,0.29],[550000000,0.3],[695000000,0.31],[910000000,0.32],[1400000000,0.33],[1e14,0.34]],
+  'TER B': [[6200000,0],[6500000,0.0025],[6850000,0.005],[7300000,0.0075],[9200000,0.01],[10750000,0.015],[11250000,0.02],[11600000,0.025],[12600000,0.03],[13600000,0.04],[14950000,0.05],[16400000,0.06],[18450000,0.07],[21850000,0.08],[26000000,0.09],[27700000,0.1],[29350000,0.11],[31450000,0.12],[33950000,0.13],[37100000,0.14],[41100000,0.15],[45800000,0.16],[49500000,0.17],[53800000,0.18],[58500000,0.19],[64000000,0.2],[71000000,0.21],[80000000,0.22],[93000000,0.23],[109000000,0.24],[129000000,0.25],[163000000,0.26],[211000000,0.27],[374000000,0.28],[459000000,0.29],[555000000,0.3],[704000000,0.31],[957000000,0.32],[1405000000,0.33],[1e14,0.34]],
+  'TER C': [[6600000,0],[6950000,0.0025],[7350000,0.005],[7800000,0.0075],[8850000,0.01],[9800000,0.0125],[10950000,0.015],[11200000,0.0175],[12050000,0.02],[12950000,0.03],[14150000,0.04],[15550000,0.05],[17050000,0.06],[19500000,0.07],[22700000,0.08],[26600000,0.09],[28100000,0.1],[30100000,0.11],[32600000,0.12],[35400000,0.13],[38900000,0.14],[43000000,0.15],[47400000,0.16],[51200000,0.17],[55800000,0.18],[60400000,0.19],[66700000,0.2],[74500000,0.21],[83200000,0.22],[95600000,0.23],[110000000,0.24],[134000000,0.25],[169000000,0.26],[221000000,0.27],[390000000,0.28],[463000000,0.29],[561000000,0.3],[709000000,0.31],[965000000,0.32],[1419000000,0.33],[1e14,0.34]]
+};
+
+// Lapisan tarif Pasal 17 (Desember / tahunan)
+const PASAL17 = [
+  [60000000,0.05],[250000000,0.15],[500000000,0.25],[5000000000,0.30],[Infinity,0.35]
+];
+
+const MONTHS = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI','JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
+
+function num(v){ const n = Number(v); return isNaN(n) ? 0 : n; }
+
+// Cari tarif TER berdasarkan kategori & bruto bulanan
+function tarifTER(kategori, bruto){
+  const tbl = TER_TABLE[kategori] || TER_TABLE['TER A'];
+  for (let i=0;i<tbl.length;i++){
+    if (bruto <= tbl[i][0]) return tbl[i][1];
+  }
+  return tbl[tbl.length-1][1];
+}
+
+// Hitung penghasilan bruto sebulan
+function hitungBruto(d){
+  return num(d.gajiPokok)+num(d.tunjangan)+num(d.uangMakan)+num(d.uangLembur)
+    +num(d.penghasilanLain)+num(d.tunjanganPph)+num(d.premiJkk)+num(d.premiJkm)
+    +num(d.premiKes)+num(d.natura)+num(d.bonus)+num(d.thr)+num(d.tantiem);
+}
+
+// Pengurang (untuk metode Desember/tahunan)
+function hitungPengurang(d){
+  return num(d.iuranZakat)+num(d.iuranPensiun)+num(d.iuranJht);
+}
+
+// Biaya jabatan: 5% dari bruto, maks 6.000.000/tahun (500.000/bulan)
+function biayaJabatan(brutoSetahun){
+  return Math.min(0.05*brutoSetahun, 6000000);
+}
+
+// ===== PERHITUNGAN BULANAN (TER) Jan–Nov =====
+function hitungBulananTER(d){
+  const bruto = hitungBruto(d);
+  const kategori = TER_MAP[d.statusPtkp] || 'TER A';
+  const tarif = tarifTER(kategori, bruto);
+  let pph = Math.round(bruto * tarif);
+  if (d.punyaNpwp === 'TIDAK') pph = Math.round(pph * 1.2); // +20% tanpa NPWP
+  return { bruto, pengurang:0, kategoriTer:kategori, tarifTer:tarif, pphTerutang:pph };
+}
+
+// ===== PERHITUNGAN DESEMBER (Pasal 17) =====
+// pphSudahDipotong = total PPh Jan–Nov yang sudah dipotong (TER)
+function hitungDesember(d, pphSudahDipotong){
+  const brutoBulan = hitungBruto(d);
+  const brutoSetahun = num(d.brutoSetahun) || brutoBulan; // total bruto setahun jika tersedia
+  const biaJab = biayaJabatan(brutoSetahun);
+  const penguranganTahunan = num(d.pengurangSetahun) || hitungPengurang(d);
+  const netoSetahun = brutoSetahun - biaJab - penguranganTahunan;
+  const ptkp = PTKP[d.statusPtkp] || PTKP['TK/0'];
+  let pkp = Math.max(0, netoSetahun - ptkp);
+  pkp = Math.floor(pkp/1000)*1000; // dibulatkan ke bawah ribuan penuh
+
+  let pphSetahun = pasal17(pkp);
+  if (d.punyaNpwp === 'TIDAK') pphSetahun = Math.round(pphSetahun * 1.2);
+
+  const pphDesember = Math.round(pphSetahun - num(pphSudahDipotong));
+  return {
+    bruto: brutoBulan, brutoSetahun, biayaJabatan:biaJab, pengurang:penguranganTahunan,
+    netoSetahun, ptkp, pkp, pphSetahun, pphSudahDipotong:num(pphSudahDipotong),
+    kategoriTer:'PASAL 17', tarifTer:null, pphTerutang: pphDesember
+  };
+}
+
+function pasal17(pkp){
+  let sisa = pkp, pajak = 0, bawah = 0;
+  for (const [batas, tarif] of PASAL17){
+    if (pkp > bawah){
+      const lapisan = Math.min(pkp, batas) - bawah;
+      if (lapisan > 0) pajak += lapisan * tarif;
+      bawah = batas;
+    } else break;
+  }
+  return Math.round(pajak);
+}
+
+// Dispatcher utama
+function hitungPPh(d, opts){
+  opts = opts || {};
+  if (d.bulan === 'DESEMBER' || d.metode === 'DESEMBER'){
+    return hitungDesember(d, opts.pphSudahDipotong || 0);
+  }
+  return hitungBulananTER(d);
+}
+
+function rupiah(n){
+  return 'Rp ' + (Math.round(num(n))).toLocaleString('id-ID');
+}
+
+/* ===== api ===== */
+// ====== API CLIENT (JSONP, GET-only) ======
+const API = (function(){
+  let counter = 0;
+
+  function call(action, params){
+    params = params || {};
+    return new Promise((resolve, reject) => {
+      const cbName = 'jsonp_cb_' + (++counter) + '_' + Date.now();
+      const url = window.PPH_CONFIG.API_URL;
+      if (!url || url.indexOf('PASTE_URL') >= 0){
+        reject(new Error('API_URL belum dikonfigurasi di config.js'));
+        return;
+      }
+      const q = new URLSearchParams();
+      q.set('action', action);
+      q.set('callback', cbName);
+      Object.keys(params).forEach(k => {
+        if (params[k] !== undefined && params[k] !== null) q.set(k, params[k]);
+      });
+
+      const script = document.createElement('script');
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('Timeout: tidak ada respons dari server.'));
+      }, 30000);
+
+      function cleanup(){
+        clearTimeout(timeout);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cbName] = function(res){
+        cleanup();
+        if (res && res.ok) resolve(res.data !== undefined ? res.data : res);
+        else reject(new Error(res && res.error ? res.error : 'Unknown error'));
+      };
+
+      script.onerror = function(){ cleanup(); reject(new Error('Gagal memuat dari server.')); };
+      script.src = url + '?' + q.toString();
+      document.body.appendChild(script);
+    });
+  }
+
+  return {
+    ping:          ()              => call('ping'),
+    getEmployees:  ()              => call('getEmployees'),
+    saveEmployee:  (emp)           => call('saveEmployee', { payload: JSON.stringify(emp) }),
+    deleteEmployee:(id)            => call('deleteEmployee', { id }),
+    getRecords:    (month, year)   => call('getRecords', { month, year }),
+    saveRecord:    (rec)           => call('saveRecord', { payload: JSON.stringify(rec) }),
+    deleteRecord:  (id)            => call('deleteRecord', { id }),
+    getSummary:    (year, empId)   => call('getSummary', { year, employeeId: empId }),
+    getRefs:       ()              => call('getRefs')
+  };
+})();
+
+/* ===== app ===== */
+// ====== APP LOGIC ======
+const App = (function(){
+  let employees = [];
+  const PTKP_OPTS = Object.keys(PTKP);
+
+  function $(id){ return document.getElementById(id); }
+  function val(id){ return $(id) ? $(id).value : ''; }
+  function setVal(id,v){ if($(id)) $(id).value = v; }
+
+  function toast(msg, isErr){
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isErr?' err':'');
+    setTimeout(()=>{ t.className = 'toast'; }, 3000);
+  }
+
+  function fillSelect(id, opts, keep){
+    const el = $(id); if(!el) return;
+    const cur = keep ? el.value : null;
+    el.innerHTML = '';
+    opts.forEach(o=>{
+      const op = document.createElement('option');
+      if (typeof o === 'object'){ op.value=o.value; op.textContent=o.label; }
+      else { op.value=o; op.textContent=o; }
+      el.appendChild(op);
+    });
+    if (cur) el.value = cur;
+  }
+
+  function pillTer(k){
+    const map={'TER A':'pill-a','TER B':'pill-b','TER C':'pill-c','PASAL 17':'pill-p'};
+    return '<span class="pill '+(map[k]||'pill-a')+'">'+(k||'-')+'</span>';
+  }
+
+  // ---------- INIT ----------
+  async function init(){
+    // populate selects
+    [['c_ptkp'],['e_statusPtkp']].forEach(([id])=>fillSelect(id, PTKP_OPTS));
+    fillSelect('c_bulan', MONTHS);
+    fillSelect('r_bulan', MONTHS);
+    fillSelect('bp_bulan', MONTHS);
+
+    // tabs
+    document.querySelectorAll('nav button').forEach(b=>{
+      b.onclick=()=>{
+        document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        document.querySelectorAll('main > section').forEach(s=>s.style.display='none');
+        $('tab-'+b.dataset.tab).style.display='block';
+      };
+    });
+
+    // bulan -> tampilkan extra Desember
+    $('c_bulan').onchange = ()=>{
+      $('c_decExtra').style.display = (val('c_bulan')==='DESEMBER')?'block':'none';
+    };
+
+    // pilih karyawan di kalkulator -> autofill identitas
+    $('c_emp').onchange = ()=>{
+      const e = employees.find(x=>String(x.id)===val('c_emp'));
+      if (e){
+        setVal('c_nama', e.nama);
+        setVal('c_ptkp', e.statusPtkp || 'TK/0');
+        setVal('c_npwp', e.punyaNpwp || 'YA');
+      }
+    };
+
+    await checkConn();
+    await loadEmployees();
+  }
+
+  async function checkConn(){
+    const s = $('connStatus');
+    if (typeof API === 'undefined'){
+      s.textContent='Script gagal dimuat';
+      s.className='status err';
+      toast('File api.js tidak termuat. Pastikan semua file .js ada di folder yang sama, atau gunakan index_standalone.html.', true);
+      return;
+    }
+    const url = (window.PPH_CONFIG && window.PPH_CONFIG.API_URL) || '';
+    if (!url || url.indexOf('PASTE_URL') >= 0){
+      s.textContent='API_URL belum diisi';
+      s.className='status err';
+      toast('Isi API_URL di config.js dengan URL Web App Apps Script kamu (berakhiran /exec).', true);
+      return;
+    }
+    try{ await API.ping(); s.textContent='Terhubung'; s.className='status ok'; }
+    catch(e){ s.textContent='Gagal terhubung'; s.className='status err'; toast('Tidak bisa menghubungi server: '+e.message, true); }
+  }
+
+  // ---------- KARYAWAN ----------
+  async function loadEmployees(){
+    try{
+      employees = await API.getEmployees() || [];
+      renderEmpList();
+      const opts = [{value:'',label:'— Manual / pilih karyawan —'}]
+        .concat(employees.map(e=>({value:e.id,label:e.nama})));
+      fillSelect('c_emp', opts);
+      fillSelect('bp_emp', employees.map(e=>({value:e.id,label:e.nama})));
+    }catch(e){ toast(e.message, true); }
+  }
+
+  function renderEmpList(){
+    const box = $('empList');
+    if (!employees.length){ box.innerHTML='<div class="empty">Belum ada data karyawan.</div>'; return; }
+    let h='<table><thead><tr><th>Nama</th><th>NIK</th><th>NPWP</th><th>PTKP</th><th>Jabatan</th><th>Status</th><th></th></tr></thead><tbody>';
+    employees.forEach(e=>{
+      h+=`<tr>
+        <td>${e.nama||''}</td><td>${e.nik||''}</td>
+        <td>${e.punyaNpwp==='TIDAK'?'<span class="muted">Tidak</span>':(e.npwp||'')}</td>
+        <td>${e.statusPtkp||''}</td><td>${e.jabatan||''}</td><td>${e.aktif||''}</td>
+        <td class="row no-print">
+          <button class="btn btn-ghost btn-sm" onclick="App.editKaryawan('${e.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="App.hapusKaryawan('${e.id}')">Hapus</button>
+        </td></tr>`;
+    });
+    box.innerHTML = h+'</tbody></table>';
+  }
+
+  function editKaryawan(id){
+    const e = employees.find(x=>String(x.id)===String(id)); if(!e) return;
+    setVal('e_id',e.id); setVal('e_nama',e.nama); setVal('e_nik',e.nik); setVal('e_npwp',e.npwp);
+    setVal('e_punyaNpwp',e.punyaNpwp||'YA'); setVal('e_statusPtkp',e.statusPtkp||'TK/0');
+    setVal('e_jenisKelamin',e.jenisKelamin||'Laki-laki'); setVal('e_jabatan',e.jabatan);
+    setVal('e_aktif',e.aktif||'AKTIF');
+    document.querySelector('nav button[data-tab="emp"]').click();
+    window.scrollTo(0,0);
+  }
+
+  async function simpanKaryawan(){
+    const emp = {
+      id: val('e_id') || null, nama: val('e_nama'), nik: val('e_nik'), npwp: val('e_npwp'),
+      punyaNpwp: val('e_punyaNpwp'), statusPtkp: val('e_statusPtkp'),
+      jenisKelamin: val('e_jenisKelamin'), jabatan: val('e_jabatan'), aktif: val('e_aktif')
+    };
+    if (!emp.nama){ toast('Nama wajib diisi', true); return; }
+    try{ await API.saveEmployee(emp); toast('Karyawan tersimpan'); resetEmp(); await loadEmployees(); }
+    catch(e){ toast(e.message, true); }
+  }
+
+  async function hapusKaryawan(id){
+    if(!confirm('Hapus karyawan ini?')) return;
+    try{ await API.deleteEmployee(id); toast('Karyawan dihapus'); await loadEmployees(); }
+    catch(e){ toast(e.message, true); }
+  }
+
+  function resetEmp(){
+    ['e_id','e_nama','e_nik','e_npwp','e_jabatan'].forEach(i=>setVal(i,''));
+    setVal('e_punyaNpwp','YA'); setVal('e_statusPtkp','TK/0'); setVal('e_aktif','AKTIF');
+  }
+
+  // ---------- KALKULATOR ----------
+  function gatherCalc(){
+    return {
+      employeeId: val('c_emp'), nama: val('c_nama'), statusPtkp: val('c_ptkp'),
+      punyaNpwp: val('c_npwp'), tahun: val('c_tahun'), bulan: val('c_bulan'),
+      gajiPokok:val('c_gajiPokok'), tunjangan:val('c_tunjangan'), uangMakan:val('c_uangMakan'),
+      uangLembur:val('c_uangLembur'), penghasilanLain:val('c_penghasilanLain'), tunjanganPph:val('c_tunjanganPph'),
+      premiJkk:val('c_premiJkk'), premiJkm:val('c_premiJkm'), premiKes:val('c_premiKes'), natura:val('c_natura'),
+      bonus:val('c_bonus'), thr:val('c_thr'), tantiem:val('c_tantiem'),
+      iuranZakat:val('c_iuranZakat'), iuranPensiun:val('c_iuranPensiun'), iuranJht:val('c_iuranJht'),
+      brutoSetahun:val('c_brutoSetahun'), pengurangSetahun:val('c_pengurangSetahun')
+    };
+  }
+
+  let lastResult = null;
+
+  function hitung(){
+    const d = gatherCalc();
+    if (!d.nama){ toast('Isi nama / pilih karyawan', true); return; }
+    const opts = { pphSudahDipotong: num(val('c_pphDipotong')) };
+    const r = hitungPPh(d, opts);
+    lastResult = Object.assign({}, d, r);
+
+    let html = '';
+    const isDes = (d.bulan==='DESEMBER');
+    if (isDes){
+      html += line('Bruto Bulan Desember', rupiah(r.bruto));
+      html += line('Bruto Setahun', rupiah(r.brutoSetahun));
+      html += line('Biaya Jabatan', rupiah(r.biayaJabatan));
+      html += line('Pengurang', rupiah(r.pengurang));
+      html += line('Neto Setahun', rupiah(r.netoSetahun));
+      html += line('PTKP ('+d.statusPtkp+')', rupiah(r.ptkp));
+      html += line('PKP', rupiah(r.pkp));
+      html += line('PPh Setahun (Pasal 17)', rupiah(r.pphSetahun));
+      html += line('PPh sudah dipotong Jan–Nov', rupiah(r.pphSudahDipotong));
+      html += line('Metode', pillTer('PASAL 17'));
+    } else {
+      html += line('Penghasilan Bruto Sebulan', rupiah(r.bruto));
+      html += line('Kategori TER', pillTer(r.kategoriTer));
+      html += line('Tarif Efektif (TER)', (r.tarifTer*100).toFixed(2).replace('.',',')+'%');
+      if (d.punyaNpwp==='TIDAK') html += line('Penyesuaian tanpa NPWP', '+20%');
+    }
+    html += `<div class="result-row total"><span>PPh Pasal 21 ${isDes?'Desember':'Terutang'}</span><span>${rupiah(r.pphTerutang)}</span></div>`;
+    $('c_result').innerHTML = html;
+    $('c_result').style.display = 'block';
+    $('c_save').style.display = 'inline-block';
+  }
+
+  function line(label, value){
+    return `<div class="result-row"><span>${label}</span><span>${value}</span></div>`;
+  }
+
+  async function simpanRecord(){
+    if (!lastResult){ toast('Hitung dulu sebelum simpan', true); return; }
+    const r = lastResult;
+    const rec = {
+      employeeId:r.employeeId, nama:r.nama, statusPtkp:r.statusPtkp, tahun:r.tahun, bulan:r.bulan,
+      metode: r.bulan==='DESEMBER'?'DESEMBER':'TER',
+      gajiPokok:num(r.gajiPokok), tunjangan:num(r.tunjangan), uangMakan:num(r.uangMakan),
+      uangLembur:num(r.uangLembur), penghasilanLain:num(r.penghasilanLain), tunjanganPph:num(r.tunjanganPph),
+      premiJkk:num(r.premiJkk), premiJkm:num(r.premiJkm), premiKes:num(r.premiKes), natura:num(r.natura),
+      bonus:num(r.bonus), thr:num(r.thr), tantiem:num(r.tantiem),
+      iuranZakat:num(r.iuranZakat), iuranPensiun:num(r.iuranPensiun), iuranJht:num(r.iuranJht),
+      bruto:r.bruto, pengurang:r.pengurang||0, kategoriTer:r.kategoriTer,
+      tarifTer:r.tarifTer||'', pphTerutang:r.pphTerutang
+    };
+    try{ await API.saveRecord(rec); toast('Perhitungan disimpan ke spreadsheet'); }
+    catch(e){ toast(e.message, true); }
+  }
+
+  function resetCalc(){
+    ['c_gajiPokok','c_tunjangan','c_uangMakan','c_uangLembur','c_penghasilanLain','c_tunjanganPph',
+     'c_premiJkk','c_premiJkm','c_premiKes','c_natura','c_bonus','c_thr','c_tantiem',
+     'c_iuranZakat','c_iuranPensiun','c_iuranJht','c_brutoSetahun','c_pengurangSetahun','c_pphDipotong']
+      .forEach(i=>setVal(i,'0'));
+    $('c_result').style.display='none'; $('c_save').style.display='none'; lastResult=null;
+  }
+
+  // ---------- REKAP BULANAN ----------
+  async function loadRecords(){
+    const box=$('recList'); box.innerHTML='<div class="empty">Memuat…</div>';
+    try{
+      const recs = await API.getRecords(val('r_bulan'), val('r_tahun')) || [];
+      if(!recs.length){ box.innerHTML='<div class="empty">Tidak ada data untuk periode ini.</div>'; return; }
+      let totBruto=0,totPph=0;
+      let h='<table><thead><tr><th>Nama</th><th>PTKP</th><th>Kategori</th><th class="num">Bruto</th><th class="num">Tarif</th><th class="num">PPh 21</th><th></th></tr></thead><tbody>';
+      recs.forEach(r=>{
+        totBruto+=num(r.bruto); totPph+=num(r.pphTerutang);
+        const tarif = r.tarifTer!=='' && r.tarifTer!=null ? (num(r.tarifTer)*100).toFixed(2).replace('.',',')+'%' : '-';
+        h+=`<tr><td>${r.nama||''}</td><td>${r.statusPtkp||''}</td><td>${pillTer(r.kategoriTer)}</td>
+          <td class="num">${rupiah(r.bruto)}</td><td class="num">${tarif}</td>
+          <td class="num">${rupiah(r.pphTerutang)}</td>
+          <td class="no-print"><button class="btn btn-danger btn-sm" onclick="App.hapusRecord('${r.id}')">Hapus</button></td></tr>`;
+      });
+      h+=`</tbody><tfoot><tr style="font-weight:700"><td colspan="3">TOTAL (${recs.length} karyawan)</td>
+        <td class="num">${rupiah(totBruto)}</td><td></td><td class="num">${rupiah(totPph)}</td><td></td></tr></tfoot></table>`;
+      box.innerHTML=h;
+    }catch(e){ box.innerHTML='<div class="empty">'+e.message+'</div>'; }
+  }
+
+  async function hapusRecord(id){
+    if(!confirm('Hapus baris perhitungan ini?')) return;
+    try{ await API.deleteRecord(id); toast('Dihapus'); await loadRecords(); }
+    catch(e){ toast(e.message, true); }
+  }
+
+  // ---------- SUMMARY ----------
+  async function loadSummary(){
+    const box=$('sumList'); box.innerHTML='<div class="empty">Memuat…</div>';
+    try{
+      const sum = await API.getSummary(val('s_tahun'),'') || [];
+      if(!sum.length){ box.innerHTML='<div class="empty">Belum ada data tahun ini.</div>'; return; }
+      let h='<table><thead><tr><th>Nama</th><th>PTKP</th>';
+      MONTHS.forEach(m=>h+=`<th class="num">${m.slice(0,3)}</th>`);
+      h+='<th class="num">Total PPh</th></tr></thead><tbody>';
+      let grand=0;
+      sum.forEach(s=>{
+        h+=`<tr><td>${s.nama||''}</td><td>${s.statusPtkp||''}</td>`;
+        MONTHS.forEach(m=>{
+          const v = s.bulan && s.bulan[m] ? s.bulan[m].pph : 0;
+          h+=`<td class="num">${v? (v/1000).toLocaleString('id-ID')+'k' : '-'}</td>`;
+        });
+        grand+=num(s.totalPph);
+        h+=`<td class="num"><b>${rupiah(s.totalPph)}</b></td></tr>`;
+      });
+      h+=`</tbody><tfoot><tr style="font-weight:700"><td colspan="${2+MONTHS.length}">TOTAL SETAHUN</td><td class="num">${rupiah(grand)}</td></tr></tfoot></table>`;
+      box.innerHTML=h;
+    }catch(e){ box.innerHTML='<div class="empty">'+e.message+'</div>'; }
+  }
+
+  // ---------- BUKTI POTONG ----------
+  async function loadBuktiPotong(){
+    const area=$('bpArea'); area.innerHTML='<div class="empty">Memuat…</div>';
+    try{
+      const recs = await API.getRecords(val('bp_bulan'), val('bp_tahun')) || [];
+      const empId = val('bp_emp');
+      const r = recs.find(x=>String(x.employeeId)===String(empId));
+      if(!r){ area.innerHTML='<div class="empty">Belum ada perhitungan tersimpan untuk karyawan & periode ini.</div>'; return; }
+      const emp = employees.find(e=>String(e.id)===String(empId)) || {};
+      const tarif = r.tarifTer!=='' && r.tarifTer!=null ? (num(r.tarifTer)*100).toFixed(2).replace('.',',')+'%' : '-';
+      area.innerHTML = `
+      <div class="card">
+        <div style="text-align:center;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:14px">
+          <h2 style="margin:0">BUKTI PEMOTONGAN PPh PASAL 21</h2>
+          <div class="muted">Masa Pajak: ${r.bulan} ${r.tahun} &nbsp;·&nbsp; Metode: ${r.kategoriTer}</div>
+        </div>
+        <table>
+          <tr><td style="width:40%">Nama Penerima Penghasilan</td><td><b>${r.nama||''}</b></td></tr>
+          <tr><td>NIK / NPWP</td><td>${emp.nik||'-'} / ${emp.punyaNpwp==='TIDAK'?'(Tanpa NPWP)':(emp.npwp||'-')}</td></tr>
+          <tr><td>Status PTKP</td><td>${r.statusPtkp||''}</td></tr>
+          <tr><td>Penghasilan Bruto</td><td class="num">${rupiah(r.bruto)}</td></tr>
+          <tr><td>Tarif Efektif (TER)</td><td class="num">${tarif}</td></tr>
+          <tr style="font-weight:700;font-size:15px"><td>PPh Pasal 21 Dipotong</td><td class="num">${rupiah(r.pphTerutang)}</td></tr>
+        </table>
+        <div style="margin-top:30px;display:flex;justify-content:flex-end">
+          <div style="text-align:center">
+            <div class="muted">Pemotong Pajak,</div>
+            <div style="height:60px"></div>
+            <div style="border-top:1px solid var(--ink);padding-top:4px;min-width:180px">(_______________)</div>
+          </div>
+        </div>
+      </div>`;
+    }catch(e){ area.innerHTML='<div class="empty">'+e.message+'</div>'; }
+  }
+
+  return { init, loadEmployees, editKaryawan, simpanKaryawan, hapusKaryawan, resetEmp,
+    hitung, resetCalc, simpanRecord, loadRecords, hapusRecord, loadSummary, loadBuktiPotong };
+})();
+
+document.addEventListener('DOMContentLoaded', App.init);
+
+</script>
+</body>
+</html>
